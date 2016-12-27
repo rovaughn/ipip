@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Immutable from 'immutable';
 import './App.css';
-import { aspects, questions, descriptors } from './data';
+import { aspects, questions, descriptors, likes } from './data';
 
 function mean(xs) {
 	let sum = 0;
@@ -148,6 +148,7 @@ class App extends Component {
 	words() {
 		let facets = answers_scores(this.state.answers);
 		let words = [];
+		let things = [];
 
 		// The score is basically the percentile of people that this facet is
 		// higher than.
@@ -158,24 +159,27 @@ class App extends Component {
 		// The standard IPIP way of determining hi/lo is facet.score >= 0.7 and
 		// facet.score <= 0.3
 		for (let facet of facets) {
+			let term = null;
+
 			if (facet.score >= 0.7) {
-				console.log('+'+facet.facet);
-				words.push({
-					words: descriptors['+'+facet.facet],
-					score: facet.score,
-				});
+				term = '+'+facet.facet;
 			} else if (facet.score <= 0.3) {
-				console.log('-'+facet.facet);
-				words.push({
-					words: descriptors['-'+facet.facet],
-					score: facet.score,
-				});
+				term = '-'+facet.facet;
+			}
+
+			if (term) {
+				words.push(descriptors[term]);
+
+				if (likes[term]) {
+					things.push(likes[term]);
+				}
 			}
 		}
 
-		words.sort((a, b) => Math.abs(b.score - 0.5) - Math.abs(a.score - 0.5));
-
-		return <p>{words.map(w => w.words).join(', ')}</p>;
+		return <div>
+			<p>{words.join(', ')}</p>
+			<p>{things.join(', ')}</p>
+		</div>;
 	}
 
 	undo() {
@@ -191,7 +195,6 @@ class App extends Component {
 
 	show_results() { this.setState({ show_results: true }); }
 	hide_results() { this.setState({ show_results: false }); }
-	// <p><div ref="spectrum" style={{width: 200, height: 50, background-image: `url('spectrum.png')`}} onClick={this.clickAnswer.bind(this)}/></p>
 
 	render() {
 		return (

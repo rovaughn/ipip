@@ -10,6 +10,7 @@ async.parallel({
 	aspects: async.apply(db.all.bind(db), 'SELECT facet, aspect, alpha FROM facet'),
 	questions: async.apply(db.all.bind(db), 'SELECT prompt, facet, inverted FROM question'),
 	descriptors: async.apply(db.all.bind(db), 'SELECT facet, inverted, GROUP_CONCAT(word, \', \') AS words FROM descriptor GROUP BY facet, inverted'),
+	likes: async.apply(db.all.bind(db), 'SELECT facet, inverted, GROUP_CONCAT(thing, \', \') AS things FROM likes GROUP BY facet, inverted'),
 }, (err, result) => {
 	if (err) throw err;
 
@@ -38,8 +39,18 @@ async.parallel({
 		}
 	}
 
+	let likes = {};
+	for (let row of result.likes) {
+		if (row.inverted) {
+			likes['-'+row.facet] = row.things;
+		} else {
+			likes['+'+row.facet] = row.things;
+		}
+	}
+
 	console.log('exports.aspects = ' + JSON.stringify(aspects) + ';');
 	console.log('exports.questions = ' + JSON.stringify(questions) + ';');
 	console.log('exports.descriptors = ' + JSON.stringify(descriptors) + ';');
+	console.log('exports.likes = ' + JSON.stringify(likes) + ';');
 });
 
