@@ -35,10 +35,12 @@ function answers_scores(answers) {
 	}
 
 	for (let answer of answers) {
-		if (answer.question.inverted) {
-			add(answer.question.facet, 1 - answer.value);
+		let question = questions[answer.question];
+
+		if (question.inverted) {
+			add(question.facet, 1 - answer.value);
 		} else {
-			add(answer.question.facet, answer.value);
+			add(question.facet, answer.value);
 		}
 	}
 
@@ -71,25 +73,28 @@ function pick_next_question(answers) {
 	let answered = new Set();
 
 	for (let answer of answers) {
-		counts[answer.question.facet] = (counts[answer.question.facet] || 0) + 1;
+		let question = questions[answer.question];
+
+		counts[question.facet] = (counts[question.facet] || 0) + 1;
 		answered.add(answer.question);
 	}
 
 	let lowest_count = Number.POSITIVE_INFINITY;
 	let lowest_questions = null;
 
-	for (let question of questions) {
+	for (let question_index in questions) {
+		let question = questions[question_index];
 		let count = counts[question.facet] || 0;
 
-		if (answered.has(question)) {
+		if (answered.has(question_index)) {
 			continue;
 		}
 
 		if (count < lowest_count) {
 			lowest_count = count;
-			lowest_questions = [question];
+			lowest_questions = [question_index];
 		} else if (count === lowest_count) {
-			lowest_questions.push(question);
+			lowest_questions.push(question_index);
 		}
 	}
 
@@ -106,14 +111,27 @@ function map_object(o, f) {
 	return r;
 }
 
+let initial_state = {
+	answers: Immutable.List(),
+	current_question: pick_next_question([]),
+	show_results: false,
+};
+
+
 class App extends Component {
 	constructor() {
 		super();
-		this.state = {
-			answers: Immutable.List(),
-			current_question: pick_next_question([]),
-			show_results: false,
-		};
+
+		if (localStorage.state) {
+			this.state = JSON.parse(localStorage.state);
+			this.state.answers = Immutable.List(this.state.answers);
+		} else {
+			this.state = initial_state;
+		}
+	}
+
+	componentDidUpdate() {
+		localStorage.state = JSON.stringify(this.state);
 	}
 
 	clickAnswer(e) {
@@ -193,6 +211,14 @@ class App extends Component {
 		});
 	}
 
+	reset() {
+		if (!confirm('Are you sure you want to clear your progress?')) return;
+
+		localStorage.removeItem('state');
+		this.state = initial_state;
+		this.forceUpdate();
+	}
+
 	show_results() { this.setState({ show_results: true }); }
 	hide_results() { this.setState({ show_results: false }); }
 
@@ -201,9 +227,12 @@ class App extends Component {
 			<div className="App">
 				<h1><abbr title="International Personality Item Pool">IPIP</abbr>-NEO Personality Test</h1>
 				<p>{this.state.answers.size} of {Object.keys(questions).length} questions answered</p>
-				<p>{this.state.current_question.prompt}</p>
+				<p>{questions[this.state.current_question].prompt}</p>
 				<p><input type="image" src="spectrum.png" onClick={this.clickAnswer.bind(this)}/></p>
-				<p><button onClick={this.undo.bind(this)}>Undo</button></p>
+				<p>
+					<button onClick={this.undo.bind(this)}>Undo</button>
+					<button onClick={this.reset.bind(this)}>Reset</button>
+				</p>
 				{this.state.show_results ?
 					<div>
 					<button onClick={this.hide_results.bind(this)}>Hide results</button>
